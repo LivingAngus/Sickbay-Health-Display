@@ -1,0 +1,11 @@
+# Oura credentials and tokens — never commit these
+tools/oura_credentials.json
+tools/oura_tokens.json
+
+# Python
+__pycache__/
+*.pyc
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
