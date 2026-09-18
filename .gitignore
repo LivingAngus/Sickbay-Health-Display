@@ -2,6 +2,10 @@
 tools/oura_credentials.json
 tools/oura_tokens.json
 
+# Personal health data pulled from the API — exploratory/diagnostic only,
+# never belongs in a public repo
+tools/output/
+
 # Python
 __pycache__/
 *.pyc

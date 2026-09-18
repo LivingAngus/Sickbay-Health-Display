@@ -1,9 +1,10 @@
 """
 Shared Oura API client: token refresh + authenticated GET requests.
 
-Other scripts (oura_fetch.py, the future relay prototype, etc.) should
-import from here rather than duplicating token-handling logic. This is the
-one place that knows about oura_credentials.json / oura_tokens.json.
+Other scripts (oura_fetch.py, oura_hourly_log.py, the future relay
+prototype, etc.) should import from here rather than duplicating
+token-handling logic. This is the one place that knows about
+oura_credentials.json / oura_tokens.json.
 """
 
 import json
@@ -80,9 +81,12 @@ def get(path, params=None, _retried=False):
     Authenticated GET against the Oura API, e.g. get("daily_readiness",
     {"start_date": "2026-09-01", "end_date": "2026-09-18"}).
 
-    Automatically refreshes and retries once on a 401 (expired/rejected
-    access token), so callers never need to think about token lifetime.
-    Returns the parsed JSON response, or None on a non-recoverable error.
+    Automatically refreshes and retries once on a 401 that looks like a
+    genuinely expired/rejected token. A 401 caused by the token lacking a
+    required *scope* is NOT retried — refreshing rotates the token but
+    grants no new permissions, so retrying would just waste a refresh and
+    still fail identically. Returns the parsed JSON response, or None on a
+    non-recoverable error.
     """
     tokens = load_tokens()
     url = f"{API_BASE}/{path}"
@@ -96,10 +100,12 @@ def get(path, params=None, _retried=False):
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
-        if e.code == 401 and not _retried:
+        body = e.read().decode()
+        is_scope_error = "scope" in body.lower()
+        if e.code == 401 and not _retried and not is_scope_error:
             print("Access token expired/rejected — refreshing and retrying once...")
             refresh_access_token()
             return get(path, params, _retried=True)
         print(f"HTTP {e.code} calling {path}")
-        print(e.read().decode())
+        print(body)
         return None
